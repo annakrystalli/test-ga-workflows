@@ -1,0 +1,33 @@
+name: tz-check
+on:
+  push:
+    branches: [tz-legacy-check]
+jobs:
+  tz:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: System info
+        run: |
+          grep PRETTY_NAME /etc/os-release
+          dpkg -l | grep -E "tzdata" || true
+          ls -l /usr/share/zoneinfo/US/Eastern || echo "US/Eastern zoneinfo file missing"
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: any::lubridate
+      - name: R check before tzdata-legacy
+        run: Rscript tz.R
+      - name: Install tzdata-legacy
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tzdata-legacy || echo "tzdata-legacy not available"
+          ls -l /usr/share/zoneinfo/US/Eastern || echo "US/Eastern zoneinfo file missing"
+      - name: R check after tzdata-legacy
+        run: Rscript tz.R
